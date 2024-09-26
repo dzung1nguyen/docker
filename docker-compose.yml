@@ -1,0 +1,151 @@
+networks:
+  backend:
+    driver: bridge
+  common:
+    external: true
+
+volumes:
+  rabbitmq:
+    driver: ${VOLUMES_DRIVER}
+  redis:
+    driver: ${VOLUMES_DRIVER}
+  mysql:
+    driver: ${VOLUMES_DRIVER}
+  postgres:
+    driver: ${VOLUMES_DRIVER}
+  mongo:
+    driver: ${VOLUMES_DRIVER}
+
+services:
+### nginx ###########################################
+  nginx:
+    build:
+      context: ./nginx
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ${LOCAL_PROJECT_PATH}:/var/www
+      - ./nginx/sites/:/etc/nginx/sites-available
+      - ./nginx/conf.d/:/etc/nginx/conf.d
+      - ./nginx/ssl/:/etc/nginx/ssl
+    networks:
+      - backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+### PHP-default ###########################################
+  php82:
+    build:
+      context: ./php82
+    container_name: php82
+    volumes:
+      - ./php82/php8.2.ini:/usr/local/etc/php/php.ini
+      - ${LOCAL_PROJECT_PATH}:/var/www
+    ports:
+      - "9082:9000"
+    networks:
+      - backend
+    restart: unless-stopped
+
+  ### RabbitMQ #############################################
+  rabbitmq:
+    restart: unless-stopped
+    build:
+      context: ./rabbitmq
+      args:
+        - RABBITMQ_VERSION=${RABBITMQ_VERSION}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      - "15671:15671"
+      - "15674:15674"
+    privileged: true
+    hostname: common-rabbitmq
+    container_name: common_rabbitmq
+    volumes:
+      - ${LOCAL_DATA_PATH}/rabbitmq:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./rabbitmq/management_agent.disable_metrics_collector.conf:/etc/rabbitmq/conf.d/management_agent.disable_metrics_collector.conf
+    networks:
+      - backend
+      - common
+
+  ### Redis ###########################################
+  redis:
+    build:
+      context: ./redis
+      args:
+        - REDIS_VERSION=${REDIS_VERSION}
+    volumes:
+      - ${LOCAL_DATA_PATH}/redis:/data
+    hostname: common-redis
+    container_name: common_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - backend
+      - common
+    restart: unless-stopped
+
+  ### MySQL ###########################################
+  mysql:
+    build:
+      context: ./mysql
+      args:
+        - MYSQL_VERSION=${MYSQL_VERSION}
+    container_name: common_mysql
+    tty: true
+    ports:
+      - "3306:3306"
+    volumes:
+      - ${LOCAL_DATA_PATH}/mysql:/var/lib/mysql
+      - ./mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - TZ=${TIMEZONE}
+    networks:
+      - backend
+      - common
+    restart: unless-stopped
+
+  ### PostgreSQL ###########################################
+  postgres:
+    build:
+      context: ./postgres
+      args:
+        - POSTGRES_VERSION=${POSTGRES_VERSION}
+    container_name: common_postgres
+    volumes:
+      - ${LOCAL_DATA_PATH}/postgres:/var/lib/postgresql/data
+      - ./postgres/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks:
+      - backend
+      - common
+    restart: unless-stopped
+
+### MongoDB ##############################################
+  mongo:
+    restart: unless-stopped
+    build:
+      context: ./mongo
+      args:
+        - MONGO_VERSION=${MONGO_VERSION}
+    container_name: common_mongo
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+    volumes:
+      - ${LOCAL_DATA_PATH}/mongo:/data/db
+      - ${LOCAL_DATA_PATH}/mongo_config:/data/configdb
+    networks:
+      - backend
+      - common
