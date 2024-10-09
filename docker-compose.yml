@@ -5,16 +5,16 @@ networks:
     external: true
 
 volumes:
-  rabbitmq:
-    driver: ${VOLUMES_DRIVER}
   redis:
     driver: ${VOLUMES_DRIVER}
   mysql:
     driver: ${VOLUMES_DRIVER}
   postgres:
     driver: ${VOLUMES_DRIVER}
-  mongo:
-    driver: ${VOLUMES_DRIVER}
+  # rabbitmq:
+  #   driver: ${VOLUMES_DRIVER}
+  # mongo:
+  #   driver: ${VOLUMES_DRIVER}
 
 services:
 ### nginx ###########################################
@@ -34,7 +34,8 @@ services:
       - backend
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    restart: unless-stopped
+    restart: no
+
 ### PHP-default ###########################################
   php82:
     build:
@@ -47,30 +48,7 @@ services:
       - "9082:9000"
     networks:
       - backend
-    restart: unless-stopped
-
-  ### RabbitMQ #############################################
-  rabbitmq:
-    restart: unless-stopped
-    build:
-      context: ./rabbitmq
-      args:
-        - RABBITMQ_VERSION=${RABBITMQ_VERSION}
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-      - "15671:15671"
-      - "15674:15674"
-    privileged: true
-    hostname: common-rabbitmq
-    container_name: common_rabbitmq
-    volumes:
-      - ${LOCAL_DATA_PATH}/rabbitmq:/var/lib/rabbitmq
-      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
-      - ./rabbitmq/management_agent.disable_metrics_collector.conf:/etc/rabbitmq/conf.d/management_agent.disable_metrics_collector.conf
-    networks:
-      - backend
-      - common
+    restart: no
 
   ### Redis ###########################################
   redis:
@@ -87,7 +65,7 @@ services:
     networks:
       - backend
       - common
-    restart: unless-stopped
+    restart: no
 
   ### MySQL ###########################################
   mysql:
@@ -108,7 +86,7 @@ services:
     networks:
       - backend
       - common
-    restart: unless-stopped
+    restart: no
 
   ### PostgreSQL ###########################################
   postgres:
@@ -128,24 +106,47 @@ services:
     networks:
       - backend
       - common
-    restart: unless-stopped
+    restart: no
 
-### MongoDB ##############################################
-  mongo:
-    restart: unless-stopped
-    build:
-      context: ./mongo
-      args:
-        - MONGO_VERSION=${MONGO_VERSION}
-    container_name: common_mongo
-    ports:
-      - "27017:27017"
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
-    volumes:
-      - ${LOCAL_DATA_PATH}/mongo:/data/db
-      - ${LOCAL_DATA_PATH}/mongo_config:/data/configdb
-    networks:
-      - backend
-      - common
+# ### RabbitMQ #############################################
+#   rabbitmq:
+#     restart: no
+#     build:
+#       context: ./rabbitmq
+#       args:
+#         - RABBITMQ_VERSION=${RABBITMQ_VERSION}
+#     ports:
+#       - "5672:5672"
+#       - "15672:15672"
+#       - "15671:15671"
+#       - "15674:15674"
+#     privileged: true
+#     hostname: common-rabbitmq
+#     container_name: common_rabbitmq
+#     volumes:
+#       - ${LOCAL_DATA_PATH}/rabbitmq:/var/lib/rabbitmq
+#       - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+#       - ./rabbitmq/management_agent.disable_metrics_collector.conf:/etc/rabbitmq/conf.d/management_agent.disable_metrics_collector.conf
+#     networks:
+#       - backend
+#       - common
+
+# ### MongoDB ##############################################
+#   mongo:
+#     restart: no
+#     build:
+#       context: ./mongo
+#       args:
+#         - MONGO_VERSION=${MONGO_VERSION}
+#     container_name: common_mongo
+#     ports:
+#       - "27017:27017"
+#     environment:
+#       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+#       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+#     volumes:
+#       - ${LOCAL_DATA_PATH}/mongo:/data/db
+#       - ${LOCAL_DATA_PATH}/mongo_config:/data/configdb
+#     networks:
+#       - backend
+#       - common
